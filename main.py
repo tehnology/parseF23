@@ -1,13 +1,25 @@
 from pathlib import Path
 import itertools
 from itertools import combinations
+from tkinter import *
+from tkinter import filedialog
 import matplotlib.pyplot as plt
+from matplotlib import colors
+import os
 
 # file_name = Path(r'\\nts2dc\W1User\Ficep_2\11824_1-01.fnc')
 # file_name = Path(r'\\nts2dc\W1User\Ficep_2\11815_1-01.fnc')
-file_name = Path(r'\\nts2dc\W1User\Ficep_2\10181_1-01.fnc')
+# file_name = Path(r'\\nts2dc\W1User\Ficep_2\10181_1-01.fnc')
+TASKS_PATH = Path(r'd:\Workdir')
 DELTA = 1000
 
+def get_tasks():
+    root = Tk()
+    root.withdraw()
+    root.filenames = filedialog.askopenfilename(initialdir=TASKS_PATH,
+                                               title="Select files",
+                                               filetypes=(("ods files", "*.fnc"), ("all files", "*.*")))
+    return root.filenames
 
 def get_dct_holes(path):
     holes_dict = {}
@@ -113,31 +125,58 @@ def split_dicts(dct_input):
                     i += num_of_pairs_(y_list)
     return i
 
-###
+def save(name='', fmt='png'):
+    pwd = os.getcwd()
+    iPath = './pictures/{}'.format(fmt)
+    if not os.path.exists(iPath):
+        os.mkdir(iPath)
+    os.chdir(iPath)
+    plt.savefig('{}.{}'.format(name, fmt), fmt='png')
+    os.chdir(pwd)
+    plt.close()
 
 if __name__ == '__main__':
-
+    file_name = get_tasks()
     dct_input = get_dct_holes(file_name)
     print(dct_input)
+
     summa_par = split_dicts(dct_input)
-    print(count_holes(dct_input))
     print(summa_par)
-    # print(dct_input)
-    # print(count_holes(dct_input))
-    # print(num_of_pairs(['2435', '2365', '2245', '2175', '2055', '1985', '1865', '1795', '1675', '1605', '1485', '1415']))
 
-    # plt.axes()
-    # def draw_circles(plt, dct_input, color=None):
-    #
-    #     for dia, dct_inner in dct_input.items():
-    #         for x_coord, y_coord_list in dct_inner.items():
-    #             for i in y_coord_list:
-    #                 # print(x_coord, i)
-    #                 circle = plt.Circle((float(x_coord), float(i)), radius=int(dia), fc=color, fill=False)
-    #                 plt.gca().add_patch(circle)
-    #     plt.axis('scaled')
-    #
-    # draw_circles(plt, dct_input, color='g')
-    # plt.show()
+    dict_num_holes = count_holes(dct_input)
+    print(dict_num_holes)
 
+
+    fig = plt.figure(figsize=(60, 40), dpi=100)
+
+    # scatter1 = plt.scatter(0.0, 1.0)
+    # graph1 = plt.plot([-1.0, 1.0], [0.0, 1.0])
+    # text1 = plt.text(0.5, 0.5, 'Text on figure')
+
+    # D_id_color = {'A': u'orchid', 'B': u'darkcyan', 'C': u'grey', 'D': u'dodgerblue', 'E': u'turquoise', 'F': u'darkviolet'}
+    # x_coordinates = [1, 2, 3, 4, 5, 6]  # Added missing datapoint
+    # y_coordinates = [3, 3, 3, 3, 3, 3]  # Added missing datapoint
+    # size_map = [50, 100, 200, 400, 800, 1200]  # Added missing datapoint
+    # color_map = [color for color in D_id_color.values()[:len(x_coordinates)]]
+    # plt.scatter(x_coordinates, y_coordinates, s=size_map)
+
+    x_coordinates = []
+    y_coordinates = []
+    size_map = []
+    for dia, dct_inner in dct_input.items():
+        for x_coord, y_coord_list in dct_inner.items():
+            for y_coord in y_coord_list:
+                size = int(dia)*1.5
+                x_coordinates.append(x_coord)
+                y_coordinates.append(y_coord)
+                size_map.append(size)
+
+    scatter1 = plt.scatter(x_coordinates, y_coordinates, s=size_map, edgecolors='none', c='b')
+    grid1 = plt.grid(True)   # линии вспомогательной сетки
+
+    # save(name='pic_2_1', fmt='pdf')
+    # save(name='pic_2_1', fmt='png')
+
+    plt.show()
+    plt.close()
 
