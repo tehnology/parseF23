@@ -42,6 +42,7 @@ def main(path):
     msp = doc.modelspace()
 
     pts = []
+    sr = 0
 
 
     with open(path) as f:
@@ -87,18 +88,21 @@ def main(path):
                 operation = 'VREZKA'
                 continue
 
+            if 'CUT' in line:
+                line = line.strip('[CUT] ')
+                operation = 'CUT'
+
             if all(i in line for i in('R', 'X', 'Y')):
                 line = line.strip('[CUT] ')
                 if 'SR1401' in line:
-                    operation = 'CUT'
-
+                    sr = 1
 
                 if operation == 'VREZKA':
                     end_vrez = (get_data(line, 'X'), get_data(line, 'Y'))
                     msp.add_line(start_vrez, end_vrez, dxfattribs={'color': 11})
                     operation = ''
 
-                elif operation == 'CUT':
+                elif operation == 'CUT' and sr != 2:
                     pts.append((get_data(line, 'X'), get_data(line, 'Y')))
                     sr += 1
 
