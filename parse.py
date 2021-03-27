@@ -3,11 +3,11 @@ import ezdxf
 from pathlib import Path
 from tkinter import *
 from tkinter import filedialog
-from ezdxf.math import Vec2
+from ezdxf.math import Vec2, area
 from math import sqrt
 
-TASKS_PATH = Path(r'./')
-# TASKS_PATH = Path(r'k:\Ficep_2')
+# TASKS_PATH = Path(r'./')
+TASKS_PATH = Path(r'k:\Ficep_2')
 
 def get_tasks():
     root = Tk()
@@ -20,11 +20,13 @@ def get_tasks():
 
 def bulge_from_rad(pt1, pt2, rad):
     dist = (Vec2(pt1) - Vec2(pt2)).magnitude
-    bulge = (2*(rad-sqrt(abs((dist*dist)/4 - rad*rad))))/dist
+    bulge = (2*(abs(rad) - sqrt(rad*rad - (dist*dist)/4)))/dist
     if rad < 0:
         return -bulge
     else:
         return bulge
+    # print('BULGE: ', bulge)
+    # return bulge
 
 
 def get_data(str, sym=''):
@@ -76,6 +78,8 @@ def main(path):
     pts = []
     switch = 0
     operation = ''  # VREZKA, CUT, VYHOD
+    sum_area = 0
+
 
     with open(path) as f:
         for line in f:
@@ -86,6 +90,7 @@ def main(path):
                 L = get_data(line, 'LP')
 
                 msp.add_lwpolyline(((0, 0),(0, B),(L, B),(L, 0)), close=True)
+                list_area = area([(0, 0),(0, B),(L, B),(L, 0)])
 
                 continue
 
@@ -94,7 +99,7 @@ def main(path):
 
                 msp.add_text(get_data(line, 'N:'),  dxfattribs={'height': 10,
                                                                 'rotation': get_data(line, 'ANG'),
-                                                                'color': 140
+                                                                'color': 120
 
                                                                 }).set_pos(
                     [get_data(line, 'X'),
@@ -156,8 +161,19 @@ def main(path):
                     continue
 
                 if switch == 3335:
+                    pts_vhod = [pts.pop(0), pts[0]]
+                    pts_vyhod = [pts[-2], pts.pop(-1)]
+                    msp.add_lwpolyline(pts_vhod, format='xyb', dxfattribs={'color': 11})
+                    msp.add_lwpolyline(pts_vyhod, format='xyb', dxfattribs={'color': 140})
                     msp.add_lwpolyline(pts, format='xyb', )
+                    sum_area += area(pts)
                     pts = []
+                    pts_vhod = []
+                    pts_vyhod = []
+                    print('AREA: ', sum_area)
+                    othod = list_area - sum_area
+                    print('Отход от чистого:', othod / sum_area)
+                    print('Отход от грязного:', othod / list_area)
 
 
 
