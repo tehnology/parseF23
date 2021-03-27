@@ -6,7 +6,8 @@ from tkinter import filedialog
 from ezdxf.math import Vec2
 from math import sqrt
 
-TASKS_PATH = Path(r'k:\Ficep_2')
+TASKS_PATH = Path(r'./')
+# TASKS_PATH = Path(r'k:\Ficep_2')
 
 def get_tasks():
     root = Tk()
@@ -20,29 +21,49 @@ def get_tasks():
 def bulge_from_rad(pt1, pt2, rad):
     dist = (Vec2(pt1) - Vec2(pt2)).magnitude
     bulge = (2*(rad-sqrt(abs((dist*dist)/4 - rad*rad))))/dist
-    return bulge
+    if rad < 0:
+        return -bulge
+    else:
+        return bulge
 
 
 def get_data(str, sym=''):
-    res = re.search(f'{sym}\S+', str)
-    if res:
-        strr = res.group(0)
-        # print(strr)
-        clean = strr.strip(sym)
-        # print(clean)
-        try:
-            N = float(clean)
-            return N
-        except (ValueError, TypeError):
-            return clean
+    if sym in str:
+        res = re.search(f'{sym}\S+', str)
+        if res:
+            strr = res.group(0)
+            # print(strr)
+            clean = strr.strip(sym)
+            # print(clean)
+            try:
+                N = float(clean)
+                return N
+            except (ValueError, TypeError):
+                return clean
+    else:
+        return 0
 
 
-def get_new_pt(line, pts, rad=0):
+def get_new_pt(line, lastpt, rad=0):
     pt2 = (get_data(line, 'X'), get_data(line, 'Y'))
     if rad:
-        return (get_data(line, 'X'), get_data(line, 'Y'), bulge_from_rad(pts[-1], pt2, rad))
+        return (get_data(line, 'X'), get_data(line, 'Y'), bulge_from_rad(lastpt, pt2, rad))
     else:
         return (get_data(line, 'X'), get_data(line, 'Y'))
+
+
+def fix_pts(pts, line):
+    current_rad = get_data(line, 'R')
+    if current_rad:
+        # print(current_rad)
+        pt = list(pts[-1])
+        pt.append(bulge_from_rad(pts[-1], (get_data(line,'X'), get_data(line,'Y')), current_rad))
+        pts[-1] = tuple(pt)
+        pts.append((get_data(line,'X'), get_data(line,'Y')))
+    else:
+        pts.append((get_data(line, 'X'), get_data(line, 'Y')))
+    return pts
+
 
 
 
@@ -53,7 +74,7 @@ def main(path):
     msp = doc.modelspace()
 
     pts = []
-    switch = 1
+    switch = 0
     operation = ''  # VREZKA, CUT, VYHOD
 
     with open(path) as f:
@@ -94,49 +115,100 @@ def main(path):
 
                 continue
 
-            if 'LEAD' in line:
-                line = line.strip('[LEAD] ')
-                start_vrez = (get_data(line, 'X'), get_data(line, 'Y'))
-                operation = 'VREZKA'
-                switch += 1
-                continue
-
-            if 'SR1401' in line:
-                switch = 3333
-
-            if all(i in line for i in('R', 'X', 'Y')):
+            if all(i in line for i in('R', 'X', 'Y')) or 'LEAD' in line:
                 line = line.strip('[CUT] ')
                 switch += 1
-                # if 'SR1401' in line:
-                #     sr = 1
+                operation = 'CUT'
 
-                if operation == 'VREZKA':
-                    end_vrez = (get_data(line, 'X'), get_data(line, 'Y'), get_data(line, 'R'))
-                    msp.add_line(start_vrez, end_vrez, dxfattribs={'color': 11})
-                    pts.append(end_vrez)
-                    operation = 'CUT'
+                if pts:
+                    # pts.append(get_new_pt(line, pts[-1], get_data(line, 'R')))
+                    pts = fix_pts(pts, line)
+                else:
+                    pts.append((get_data(line, 'X'), get_data(line, 'Y')))
+                # print(get_data(line, 'X'))
+                # print(get_data(line, 'Y'))
+                # print(get_data(line, 'R'))
+                    # print(get_new_pt(line, pts[-1], get_data(line, 'R')))
 
-                if operation == 'CUT' and switch <= 3334:
-                    # pts.append((get_data(line, 'X'), get_data(line, 'Y'), get_data(line, 'R')))
-                    pts.append(get_new_pt(line, pts, get_data(line, 'R')))
-                elif operation == 'CUT' and switch > 3334:
-                    start_vyhod = (get_data(line, 'X'), get_data(line, 'Y'), get_data(line, 'R'))
-                    pts.append(start_vyhod)
-                    msp.add_lwpolyline(pts, format='xyb')
+                print(line, end='')
+                print(operation)
+                print(pts)
+                print(switch, end='\n**********************\n')
+
+                if 'LEAD' in line:
+                    line = line.strip('[LEAD] ')
+                    operation = 'VREZKA'
+
+                    print(line, end='')
+                    print(operation)
+                    print(pts)
+                    print(switch, end='\n**********************\n')
+
+                    continue
+
+                if 'SR1401' in line:
+                    switch = 3333
+
+                    print(line, end='')
+                    print(operation)
+                    print(pts)
+                    print(switch, end='\n**********************\n')
+                    continue
+
+                if switch == 3335:
+                    msp.add_lwpolyline(pts, format='xyb', )
                     pts = []
-                    operation = 'VYHOD'
 
-                if operation == 'VYHOD':
-                    end_vyhod = (get_data(line, 'X'), get_data(line, 'Y'))
-                    # end_vyhod = get_new_pt(line, pts, get_data(line, 'R'))
-                    msp.add_line(start_vyhod, end_vyhod, dxfattribs={'color': 140})
-                    switch = 1
-                # elif operation == 'CUT' and sr != 2:
-                #     pts.append((get_data(line, 'X'), get_data(line, 'Y')))
-                #     sr += 1
 
-                # print(pts)
-                continue
+
+
+
+            # if 'LEAD' in line:
+            #     line = line.strip('[LEAD] ')
+            #     start_vrez = (get_data(line, 'X'), get_data(line, 'Y'))
+            #     operation = 'VREZKA'
+            #     switch += 1
+            #     continue
+            #
+            # if 'SR1401' in line:
+            #     switch = 3333
+            #
+            # if all(i in line for i in('R', 'X', 'Y')):
+            #     line = line.strip('[CUT] ')
+            #     switch += 1
+            #
+            #
+            #     if operation == 'VREZKA':
+            #         # end_vrez = (get_data(line, 'X'), get_data(line, 'Y'), get_data(line, 'R'))
+            #         end_vrez = (get_new_pt(line, start_vrez, get_data(line, 'R')))
+            #         # msp.add_line(start_vrez, end_vrez, dxfattribs={'color': 11})
+            #         msp.add_lwpolyline(pts, format='xyb', dxfattribs={'color': 11})
+            #         # pts.append(end_vrez)
+            #         operation = 'CUT'
+            #
+            #     if operation == 'CUT' and switch <= 3334:
+            #         # pts.append((get_data(line, 'X'), get_data(line, 'Y'), get_data(line, 'R')))
+            #         # pts.append(get_new_pt(line, pts[-1], get_data(line, 'R')))
+            #         pass
+            #
+            #     elif operation == 'CUT' and switch > 3334:
+            #         start_vyhod = (get_data(line, 'X'), get_data(line, 'Y'), get_data(line, 'R'))
+            #         pts.append(start_vyhod)
+            #         msp.add_lwpolyline(pts, format='xyb')
+            #         pts = []
+            #         operation = 'VYHOD'
+            #
+            #     if operation == 'VYHOD':
+            #         end_vyhod = (get_data(line, 'X'), get_data(line, 'Y'))
+            #         # end_vyhod = get_new_pt(line, pts[-1], get_data(line, 'R'))
+            #         msp.add_line(start_vyhod, end_vyhod, dxfattribs={'color': 140})
+            #         switch = 1
+            #     # elif operation == 'CUT' and sr != 2:
+            #     #     pts.append((get_data(line, 'X'), get_data(line, 'Y')))
+            #     #     sr += 1
+            #
+            #     # print(pts)
+            #     continue
     # msp.add_line([0,0], [500,500])
     # msp.add_circle([0,0], 50)
     # msp.add_text([50,0],'DSFSDFSD')
