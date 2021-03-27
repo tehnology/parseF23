@@ -1,13 +1,13 @@
-import re
 import ezdxf
+import re
 from pathlib import Path
 from tkinter import *
 from tkinter import filedialog
-from ezdxf.math import Vec2, area
+from ezdxf.math import Vec2, area, xround
 from math import sqrt
 
-# TASKS_PATH = Path(r'./')
-TASKS_PATH = Path(r'k:\Ficep_2')
+TASKS_PATH = Path(r'./')
+# TASKS_PATH = Path(r'k:\Ficep_2')
 
 def get_tasks():
     root = Tk()
@@ -86,11 +86,11 @@ def main(path):
 
             if 'LP' in line:
 
-                B = get_data(line, 'SA')
-                L = get_data(line, 'LP')
+                b = get_data(line, 'SA')
+                l = get_data(line, 'LP')
 
-                msp.add_lwpolyline(((0, 0),(0, B),(L, B),(L, 0)), close=True)
-                list_area = area([(0, 0),(0, B),(L, B),(L, 0)])
+                msp.add_lwpolyline(((0, 0), (0, b), (l, b), (l, 0)), close=True)
+                list_area = area([(0, 0), (0, b), (l, b), (l, 0)])
 
                 continue
 
@@ -168,12 +168,12 @@ def main(path):
                     msp.add_lwpolyline(pts, format='xyb', )
                     sum_area += area(pts)
                     pts = []
-                    pts_vhod = []
-                    pts_vyhod = []
+
                     print('AREA: ', sum_area)
-                    othod = list_area - sum_area
-                    print('Отход от чистого:', othod / sum_area)
-                    print('Отход от грязного:', othod / list_area)
+                    if list_area:
+                        othod = list_area - sum_area
+                        print('Отход от чистого:', xround((othod / sum_area),0.01))
+                        print('Отход от грязного:', xround((othod / list_area),0.01))
 
 
 
